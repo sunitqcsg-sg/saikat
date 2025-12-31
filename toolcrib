@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BHEL Tool Crib - Saikat Ghosh Final</title>
+    <script src="https://cdn.tailwindcss.com/"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style> 
+        th, td { padding: 5px 8px; border-bottom: 1px solid #f1f5f9; font-size: 10px; line-height: 1.2; } 
+        th { background: #f8fafc; color: #475569; text-transform: uppercase; font-weight: 800; } 
+        .tab-btn { flex: 1; padding: 12px 2px; font-weight: bold; font-size: 10px; text-align: center; cursor: pointer; border-bottom: 3px solid transparent; color: #64748b; }
+        .tab-active { color: #4f46e5; border-bottom: 3px solid #4f46e5; background: #f8fafc; }
+        .action-hidden { display: none !important; }
+        .search-input { width: 100%; padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 10px; }
+        .save-btn { width: 100%; padding: 12px; background: #1e293b; color: white; border-radius: 8px; font-weight: bold; }
+        .status-toggle { display: flex; border: 2px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+        .status-toggle input { display: none; }
+        .status-toggle label { flex: 1; padding: 8px; text-align: center; cursor: pointer; font-size: 10px; font-weight: bold; background: #f8fafc; }
+        #type-issue:checked + label { background: #2563eb; color: white; }
+        #type-return:checked + label { background: #059669; color: white; }
+        .calib-expired { color: #dc2626; font-weight: 900; background: #fee2e2; padding: 2px 4px; border-radius: 4px; }
+        .calib-warning { color: #9a3412; font-weight: 900; background: #ffedd5; padding: 2px 4px; border-radius: 4px; }
+        .delay-text { color: #dc2626; font-weight: bold; }
+        .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; }
+        .wa-card { border-left: 4px solid #25d366; background: #f0fff4; padding: 10px; margin-bottom: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900">
+
+    <div id="loginOverlay" class="fixed inset-0 bg-slate-900/90 flex items-center justify-center z-[100]">
+        <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md text-center border-t-4 border-indigo-600">
+            <h2 class="text-3xl font-black text-indigo-900 mb-2">BHEL CRIB LOGIN</h2>
+            <div class="space-y-4">
+                <input type="text" id="loginUser" placeholder="User ID" class="w-full p-3 border rounded-xl bg-slate-50 outline-indigo-500">
+                <input type="password" id="loginPass" placeholder="Password" class="w-full p-3 border rounded-xl bg-slate-50 outline-indigo-500">
+                <button onclick="attemptLogin()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700">ACCESS SYSTEM</button>
+                <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-left">
+                    <p class="text-[11px] text-amber-800 font-bold leading-tight">
+                        NOTE: INITIAL LOGIN USER ID IS- "0000", <br>
+                        PASSWORD- "1234" AND UNLOCK PASSWORD - 1234
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="appContent" class="hidden">
+        <div class="bg-white shadow-md flex sticky top-0 z-[50] overflow-x-auto">
+            <div onclick="switchPage(1)" id="tab1" class="tab-btn tab-active whitespace-nowrap px-4">🏢 REGISTRY</div>
+            <div onclick="switchPage(2)" id="tab2" class="tab-btn whitespace-nowrap px-4">📸 PHOTO</div>
+            <div onclick="switchPage(3)" id="tab3" class="tab-btn whitespace-nowrap px-4">📦 STOCK</div>
+            <div onclick="switchPage(4)" id="tab4" class="tab-btn whitespace-nowrap px-4">🛠️ HY&AA</div>
+            <div onclick="switchPage(5)" id="tab5" class="tab-btn whitespace-nowrap px-4">⚠️ CALIB</div>
+            <div onclick="switchPage(6)" id="tab6" class="tab-btn whitespace-nowrap px-4">🖼️ GALLERY</div>
+            <div onclick="switchPage(7)" id="tab7" class="tab-btn whitespace-nowrap px-4">💬 WHATSAPP</div>
+        </div>
+
+        <div id="page1" class="container mx-auto p-4">
+            <header class="flex justify-between items-center border-b pb-4 mb-4">
+                <div><h1 class="text-xl font-black text-indigo-900 uppercase">Registry & Log</h1><p class="text-[9px] font-bold text-indigo-500">BY SAIKAT GHOSH</p></div>
+                <button id="lockBtn" onclick="toggleEditLock()" class="bg-amber-500 text-white px-3 py-1 rounded text-[10px] font-bold">🔓 UNLOCK</button>
+            </header>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                <div class="bg-white p-4 rounded shadow border">
+                    <h3 class="text-[10px] font-bold text-indigo-700 mb-2 uppercase">Add Employee</h3>
+                    <div class="space-y-2">
+                        <input type="hidden" id="editEmpIndex">
+                        <div class="grid grid-cols-2 gap-2"><input type="text" id="empName" placeholder="Name" class="p-2 border rounded text-xs"><input type="text" id="staffNo" placeholder="Staff No" class="p-2 border rounded text-xs bg-amber-50"></div>
+                        <div class="grid grid-cols-2 gap-2"><input type="tel" id="empPhone" placeholder="Phone" class="p-2 border rounded text-xs"><input type="email" id="empEmail" placeholder="Email" class="p-2 border rounded text-xs"></div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="empStatus" class="p-2 border rounded text-xs bg-white">
+                                <option value="" disabled selected>Status</option>
+                                <option>CRIB INCHARGE</option><option>CRIB ASSISTANT</option><option>EMPLOYEE</option><option>ARTISAN</option><option>CONTRACT WORKER</option><option>CONTRACT NEW OPTION</option><option>SOCITY WORKER</option><option>VENDOR</option><option>OTHER BLOCK</option><option>OTHER</option>
+                            </select>
+                            <input type="text" id="empRemarks" placeholder="Remarks" class="p-2 border rounded text-xs">
+                        </div>
+                        <button onclick="saveEmployee()" class="w-full bg-indigo-600 text-white py-2 rounded text-xs font-bold">SAVE STAFF</button>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded shadow border">
+                    <h3 class="text-[10px] font-bold text-orange-700 mb-2 uppercase">Issue / Return</h3>
+                    <div class="space-y-2">
+                        <div class="grid grid-cols-2 gap-2"><input type="date" id="txnDate" class="p-2 border rounded text-xs"><input type="text" id="txnStaffNo" placeholder="Staff No" class="p-2 border rounded text-xs"></div>
+                        <div class="relative"><input type="text" onkeyup="filterToolDropdown(this, 'txnToolNo')" placeholder="Search Tool..." class="search-input mb-1"><select id="txnToolNo" class="w-full p-2 border rounded text-xs"></select></div>
+                        <div class="grid grid-cols-2 gap-2"><input type="number" id="txnQty" value="1" class="p-2 border rounded text-xs"><input type="text" id="txnRemark" placeholder="Remarks" class="p-2 border rounded text-xs"></div>
+                        <div class="flex gap-2"><button onclick="handleTransaction('issue', 'txnStaffNo', 'txnToolNo', 'txnQty', 'txnRemark', 'txnDate')" class="flex-1 bg-orange-500 text-white py-2 rounded text-xs font-bold">ISSUE</button><button onclick="handleTransaction('return', 'txnStaffNo', 'txnToolNo', 'txnQty', 'txnRemark', 'txnDate')" class="flex-1 bg-slate-700 text-white py-2 rounded text-xs font-bold">RETURN</button></div>
+                    </div>
+                </div>
+            </div>
+            <div class="space-y-4">
+                <div class="bg-white p-4 rounded border">
+                    <div class="flex justify-between items-center mb-2"><h4 class="text-[10px] font-bold uppercase">Staff List</h4><div class="flex gap-2"><input type="text" id="searchEmp" onkeyup="render()" placeholder="Search..." class="search-input max-w-[120px]"><label class="bg-indigo-100 px-2 py-1 rounded text-[9px] cursor-pointer">UPLOAD <input type="file" class="hidden" onchange="importExcel(event, 'emp')"></label><button onclick="exportExcel('emp')" class="bg-indigo-600 text-white px-2 py-1 rounded text-[9px]">DN</button></div></div>
+                    <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr><th>Staff No</th><th>Name</th><th>Status</th><th>Phone</th><th id="empHeadAct">Action</th></tr></thead><tbody id="empTableBody"></tbody></table></div>
+                </div>
+                <div class="bg-white p-4 rounded border">
+                    <div class="flex justify-between items-center mb-2"><h4 class="text-[10px] font-bold uppercase">Trans Log</h4><div class="flex gap-2"><input type="text" id="searchLog" onkeyup="render()" placeholder="Search..." class="search-input max-w-[120px]"><label class="bg-orange-100 px-2 py-1 rounded text-[9px] cursor-pointer">UPLOAD <input type="file" class="hidden" onchange="importExcel(event, 'log')"></label><button onclick="exportExcel('log')" class="bg-orange-600 text-white px-2 py-1 rounded text-[9px]">DN</button></div></div>
+                    <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr><th>Date</th><th>Return Date</th><th>Type</th><th>Staff No</th><th>Tool ID</th><th>Days Delay</th><th>Action</th><th id="logHeadAct">Action</th></tr></thead><tbody id="historyTableBody"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="page2" class="hidden container mx-auto p-4 max-w-lg">
+            <div class="bg-white p-6 rounded-2xl border shadow-lg space-y-4">
+                <h2 class="text-center font-black text-indigo-900 uppercase">Tool Photo Evidence</h2>
+                <div class="status-toggle"><input type="radio" name="qtType" id="type-issue" value="issue" checked><label for="type-issue">ISSUE</label><input type="radio" name="qtType" id="type-return" value="return"><label for="type-return">RETURN</label></div>
+                <div class="flex flex-col items-center gap-3 border-2 border-dashed border-indigo-200 p-4 rounded-xl bg-indigo-50/30">
+                    <label class="w-full">
+                        <div class="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-md">📷 TAKE PICTURE FROM MOBILE <input type="file" id="toolPic" accept="image/*" capture="environment" class="hidden"></div>
+                    </label>
+                    <img id="preview" class="w-full rounded-lg hidden border shadow-sm max-h-48 object-cover">
+                </div>
+                <div class="grid grid-cols-2 gap-2"><input type="date" id="qtDate" class="p-2 border rounded text-xs font-bold"><input type="text" id="qtStaff" placeholder="Staff No" class="p-2 border rounded text-xs bg-orange-50"></div>
+                <input type="text" onkeyup="filterToolDropdown(this, 'qtTool')" placeholder="Search Tool..." class="search-input"><select id="qtTool" class="w-full p-2 border rounded text-xs"></select>
+                <div class="grid grid-cols-2 gap-2"><input type="number" id="qtQty" value="1" class="p-2 border rounded text-xs"><input type="text" id="qtCatPreview" readonly class="p-2 border rounded text-xs bg-slate-50 font-bold"></div>
+                <textarea id="qtRemark" placeholder="Remarks" class="w-full p-2 border rounded text-xs"></textarea>
+                <button onclick="saveQuickData()" class="save-btn bg-indigo-600">SUBMIT PHOTO LOG</button>
+            </div>
+        </div>
+
+        <div id="page3" class="hidden container mx-auto p-4">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                <div class="space-y-4">
+                    <div class="bg-white p-4 rounded border">
+                        <h3 class="text-[10px] font-bold mb-2 uppercase">Add Stock</h3>
+                        <div class="space-y-2">
+                            <input type="hidden" id="editToolIndex">
+                            <select id="toolCat" class="w-full p-2 border rounded text-xs"><option value="Regular">Regular</option><option value="Consumable">Consumable</option></select>
+                            <input type="text" id="toolNo" placeholder="Tool No" class="w-full p-2 border rounded text-xs">
+                            <input type="text" id="toolDesc" placeholder="Description" class="w-full p-2 border rounded text-xs">
+                            <input type="text" id="hyAaCode" placeholder="HY/AA Code" class="w-full p-2 border rounded text-xs">
+                            <div class="space-y-1"><label class="text-[9px] font-bold text-slate-500 uppercase">Calibration Date</label><input type="date" id="calibDate" class="w-full p-2 border rounded text-xs"></div>
+                            <input type="number" id="totalQty" placeholder="Total Quantity" class="w-full p-2 border rounded text-xs">
+                            <button onclick="saveTool()" class="w-full bg-emerald-600 text-white py-2 rounded text-xs font-bold">SAVE TO STOCK</button>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded border shadow-sm border-indigo-200">
+                        <h3 class="text-[10px] font-bold text-indigo-700 mb-2 uppercase">🔐 Admin Control</h3>
+                        <div class="space-y-2">
+                            <input type="text" id="sysUser" placeholder="Login User ID" class="w-full p-2 border rounded text-xs">
+                            <input type="password" id="sysPass" placeholder="Login Password" class="w-full p-2 border rounded text-xs">
+                            <div class="border-t pt-2 mt-2">
+                                <label class="text-[8px] font-bold text-slate-500 uppercase">System Unlock Password</label>
+                                <input type="password" id="sysUnlockPass" placeholder="New Unlock Password" class="w-full p-2 border rounded text-xs">
+                            </div>
+                            <button onclick="saveSettings()" class="w-full bg-slate-800 text-white py-2 rounded text-xs font-bold">UPDATE PASSWORDS</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="lg:col-span-3 bg-white p-4 rounded border">
+                    <div class="flex justify-between items-center mb-2"><h4 class="text-[10px] font-bold uppercase">Inventory</h4><div class="flex gap-2"><input type="text" id="searchTool" onkeyup="render()" placeholder="Search..." class="search-input max-w-[120px]"><label class="bg-emerald-100 px-2 py-1 rounded text-[9px] cursor-pointer">UPLOAD <input type="file" class="hidden" onchange="importExcel(event, 'tool')"></label><button onclick="exportExcel('tool')" class="bg-emerald-600 text-white px-2 py-1 rounded text-[9px]">DN</button></div></div>
+                    <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr><th>Tool No</th><th>Category</th><th>HY/AA Code</th><th>Calibration</th><th>Balance</th><th id="toolHeadAct">Action</th></tr></thead><tbody id="toolTableBody"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="page4" class="hidden container mx-auto p-4">
+            <div class="bg-white p-4 rounded border shadow-sm">
+                <div class="flex justify-between items-center mb-4"><h2 class="font-black text-xl uppercase">HY&AA Consumables Ledger</h2><div class="flex gap-2"><input type="text" id="searchLedger" onkeyup="render()" placeholder="Search HY/AA..." class="search-input max-w-[150px]"><button onclick="exportExcel('tool')" class="bg-indigo-600 text-white px-3 py-1.5 rounded text-[10px] font-bold uppercase">Download</button></div></div>
+                <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr><th>Code (HY/AA)</th><th>Description</th><th>Total Rec.</th><th>Total Issued</th><th>Available Bal</th><th id="ledgerHeadAct">Action</th></tr></thead><tbody id="consumableTableBody"></tbody></table></div>
+            </div>
+        </div>
+
+        <div id="page5" class="hidden container mx-auto p-4">
+            <div class="bg-white p-4 rounded border shadow-sm border-red-200">
+                <div class="flex justify-between items-center mb-4"><div><h2 class="font-black text-xl text-red-700 uppercase">Calibration Tracker</h2><p class="text-[10px] text-slate-500 font-bold">ALERTS FOR EXPIRED OR DUE IN 7 DAYS</p></div><div class="flex gap-2"><input type="text" id="searchCalib" onkeyup="render()" placeholder="Search..." class="search-input max-w-[150px]"><button onclick="exportCalibReport()" class="bg-red-600 text-white px-3 py-1.5 rounded text-[10px] font-bold uppercase">Download Report</button></div></div>
+                <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr><th>Tool No</th><th>Expiry Date</th><th>Status</th><th>Holder (Staff)</th><th>Staff Name</th></tr></thead><tbody id="calibTableBody"></tbody></table></div>
+            </div>
+        </div>
+
+        <div id="page6" class="hidden container mx-auto p-4">
+            <div class="bg-white p-4 rounded border shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="font-black text-xl text-indigo-900 uppercase">Tool Photo Gallery</h2>
+                    <input type="text" id="searchGallery" onkeyup="render()" placeholder="Search Tool No..." class="search-input max-w-[200px]">
+                </div>
+                <div id="galleryContainer" class="gallery-grid"></div>
+            </div>
+        </div>
+
+        <div id="page7" class="hidden container mx-auto p-4">
+            <div class="bg-white p-6 rounded-2xl border shadow-lg space-y-6">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-4 gap-4">
+                    <h2 class="font-black text-2xl text-green-700 uppercase">💬 WhatsApp & Data Hub</h2>
+                    <div class="flex gap-2 bg-slate-100 p-2 rounded-lg">
+                        <button onclick="toggleWaView('daily')" id="waDailyBtn" class="px-4 py-2 rounded font-bold text-xs bg-indigo-600 text-white shadow">📅 DAILY LOG</button>
+                        <button onclick="toggleWaView('calib')" id="waCalibBtn" class="px-4 py-2 rounded font-bold text-xs bg-white text-slate-600">🚨 CALIB ALERT</button>
+                    </div>
+                </div>
+                <div id="waDailyControls" class="flex items-center gap-4">
+                    <label class="text-xs font-bold">Select Date:</label>
+                    <input type="date" id="waQueryDate" onchange="renderWaMessages()" class="p-2 border rounded text-xs font-bold">
+                </div>
+                <div id="waMessagesContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let config = JSON.parse(localStorage.getItem('cc_cfg')) || {user:'0000', pass:'1234', unlock: '1234'};
+        let employees = JSON.parse(localStorage.getItem('cc_employees')) || [];
+        let inventory = JSON.parse(localStorage.getItem('cc_inventory')) || [];
+        let logs = JSON.parse(localStorage.getItem('cc_logs')) || [];
+        let isEditingLocked = true;
+        let currentImage = null;
+        let waCurrentMode = 'daily';
+
+        window.onload = () => {
+            const t = new Date().toISOString().split('T')[0];
+            document.getElementById('txnDate').value = t; 
+            document.getElementById('qtDate').value = t;
+            document.getElementById('waQueryDate').value = t;
+            document.getElementById('sysUser').value = config.user; 
+            document.getElementById('sysUnlockPass').value = config.unlock || config.pass;
+            render();
+        };
+
+        function attemptLogin() {
+            if(document.getElementById('loginUser').value === config.user && document.getElementById('loginPass').value === config.pass) {
+                document.getElementById('loginOverlay').classList.add('hidden');
+                document.getElementById('appContent').classList.remove('hidden');
+            } else alert("Wrong Password");
+        }
+
+        function saveSettings() {
+            config.user = document.getElementById('sysUser').value; 
+            config.pass = document.getElementById('sysPass').value;
+            config.unlock = document.getElementById('sysUnlockPass').value;
+            localStorage.setItem('cc_cfg', JSON.stringify(config)); alert("All Admin Passwords Updated!");
+        }
+
+        function toggleEditLock() {
+            if(isEditingLocked) {
+                if(prompt("Admin Unlock Password:") === (config.unlock || config.pass)) { 
+                    isEditingLocked = false; document.getElementById('lockBtn').innerText = "🔒 LOCK"; render(); 
+                }
+            } else { isEditingLocked = true; document.getElementById('lockBtn').innerText = "🔓 UNLOCK"; render(); }
+        }
+
+        function toggleWaView(mode) {
+            waCurrentMode = mode;
+            document.getElementById('waDailyBtn').className = mode === 'daily' ? 'px-4 py-2 rounded font-bold text-xs bg-indigo-600 text-white shadow' : 'px-4 py-2 rounded font-bold text-xs bg-white text-slate-600';
+            document.getElementById('waCalibBtn').className = mode === 'calib' ? 'px-4 py-2 rounded font-bold text-xs bg-indigo-600 text-white shadow' : 'px-4 py-2 rounded font-bold text-xs bg-white text-slate-600';
+            document.getElementById('waDailyControls').style.display = mode === 'daily' ? 'flex' : 'none';
+            renderWaMessages();
+        }
+
+        function renderWaMessages() {
+            const container = document.getElementById('waMessagesContainer');
+            if(!container) return;
+            container.innerHTML = "";
+            const today = new Date(); today.setHours(0,0,0,0);
+            const next7Days = new Date(); next7Days.setDate(today.getDate() + 7);
+
+            if (waCurrentMode === 'daily') {
+                const qDate = document.getElementById('waQueryDate').value;
+                if(!qDate) return;
+                const dp = qDate.split('-');
+                const formattedQDate = `${dp[2]}-${dp[1]}-${dp[0]}`;
+                const dailyLogs = logs.filter(l => l.date === formattedQDate);
+                if (dailyLogs.length === 0) { container.innerHTML = "<p class='text-xs text-slate-400 italic'>No entries found.</p>"; return; }
+                dailyLogs.forEach(l => {
+                    const emp = employees.find(e => e.staffNo === l.staffNo) || { name: "Unknown", phone: "" };
+                    const tool = inventory.find(t => t.toolNo === l.toolId) || { desc: "" };
+                    const statusText = l.action === "ISSUE" ? "Issued" : "Returned";
+                    const msg = `Tool Crib Update\nName : ${emp.name}\nStaff No : ${l.staffNo}\nTool No : ${l.toolId}\nTool Name : ${tool.desc}\nQuantity : ${l.qty}\nRemarks : ${l.txnRemarks || "N/A"}\n\nStatus : ${statusText} successfully.\n\nThank you.\nTool Crib.`;
+                    container.innerHTML += createWaCard(emp, msg);
+                });
+            } else {
+                const dueTools = inventory.filter(t => t.calibration && new Date(t.calibration) <= next7Days);
+                dueTools.forEach(t => {
+                    const activeLog = logs.find(l => l.toolId === t.toolNo && l.pendingQty > 0);
+                    if (activeLog) {
+                        const emp = employees.find(e => e.staffNo === activeLog.staffNo) || { name: "Unknown", phone: "" };
+                        const msg = `Name : ${emp.name}\nStaff No : ${activeLog.staffNo}\nTool No : ${t.toolNo}\nTool Name : ${t.desc}\nQuantity : ${activeLog.qty}\nDue Date : ${t.calibration}\nRemarks : ${activeLog.txnRemarks || "N/A"}\n\nThis is to inform you that the above tool is due for calibration shortly. Kindly return the tool on or before the calibration due date.\n\nThank you.\nTool Crib.`;
+                        container.innerHTML += createWaCard(emp, msg);
+                    }
+                });
+            }
+        }
+
+        function createWaCard(emp, msg) {
+            return `
+                <div class="wa-card shadow-sm border border-green-100">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="text-[10px] font-black uppercase text-green-800">${emp.name} (${emp.staffNo})</div>
+                        <button onclick="sendWa('${emp.phone}', \`${msg.replace(/`/g, "\\`")}\`)" class="bg-green-600 text-white px-3 py-1 rounded text-[9px] font-bold hover:bg-green-700">SEND WHATSAPP</button>
+                    </div>
+                    <pre class="text-[9px] font-sans leading-relaxed text-slate-700 whitespace-pre-wrap bg-white p-2 rounded border border-green-50">${msg}</pre>
+                </div>
+            `;
+        }
+
+        function sendWa(phone, msg) {
+            if (!phone) { alert("No phone number found."); return; }
+            window.open(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        function filterToolDropdown(input, selectId) {
+            const filter = input.value.toUpperCase();
+            const options = inventory.filter(t => t.toolNo.toUpperCase().includes(filter) || (t.desc && t.desc.toUpperCase().includes(filter)));
+            document.getElementById(selectId).innerHTML = options.map(t => `<option value="${t.toolNo}">${t.toolNo} - ${t.desc||''}</option>`).join('');
+            if(selectId==='qtTool') updateQtCat();
+        }
+
+        function updateQtCat() {
+            const item = inventory.find(t => t.toolNo === document.getElementById('qtTool').value);
+            document.getElementById('qtCatPreview').value = item ? item.category : '';
+        }
+
+        function saveEmployee() {
+            const name = document.getElementById('empName').value;
+            const sno = document.getElementById('staffNo').value;
+            if(!name || !sno) return alert("Fill Name and Staff No");
+            const idx = document.getElementById('editEmpIndex').value;
+            const emp = { name, staffNo: sno, phone: document.getElementById('empPhone').value, status: document.getElementById('empStatus').value, email: document.getElementById('empEmail').value, remarks: document.getElementById('empRemarks').value };
+            if(idx) employees[idx] = emp; else employees.push(emp);
+            document.getElementById('editEmpIndex').value = ""; saveAndRefresh();
+        }
+
+        function saveTool() {
+            const tno = document.getElementById('toolNo').value;
+            const qty = parseInt(document.getElementById('totalQty').value);
+            if(!tno || isNaN(qty)) return alert("Fill Tool No and Quantity");
+            const idx = document.getElementById('editToolIndex').value;
+            const tool = { toolNo: tno, category: document.getElementById('toolCat').value, desc: document.getElementById('toolDesc').value, hyAaCode: document.getElementById('hyAaCode').value, calibration: document.getElementById('calibDate').value, total: qty, balance: qty };
+            if(idx) inventory[idx] = tool; else inventory.push(tool);
+            document.getElementById('editToolIndex').value = ""; saveAndRefresh();
+        }
+
+        function render() {
+            const act = isEditingLocked ? "action-hidden" : "";
+            document.getElementById('empHeadAct').className = act;
+            document.getElementById('logHeadAct').className = act;
+            document.getElementById('toolHeadAct').className = act;
+            document.getElementById('ledgerHeadAct').className = act;
+
+            const today = new Date(); today.setHours(0,0,0,0);
+            const next7Days = new Date(); next7Days.setDate(today.getDate() + 7);
+
+            const sEmp = document.getElementById('searchEmp').value.toUpperCase();
+            const sLog = document.getElementById('searchLog').value.toUpperCase();
+            const sTool = document.getElementById('searchTool').value.toUpperCase();
+            const sCalib = document.getElementById('searchCalib').value.toUpperCase();
+            const sLedger = document.getElementById('searchLedger') ? document.getElementById('searchLedger').value.toUpperCase() : "";
+            const sGallery = document.getElementById('searchGallery').value.toUpperCase();
+
+            // PAGE 1
+            document.getElementById('empTableBody').innerHTML = employees.filter(e => e.name.toUpperCase().includes(sEmp) || e.staffNo.toUpperCase().includes(sEmp)).map((e, i) => `<tr><td><b>${e.staffNo}</b></td><td>${e.name}</td><td>${e.status||'-'}</td><td>${e.phone||'-'}</td><td class="${act}"><button onclick="editEmp(${i})" class="text-blue-600 font-bold mr-2">ED</button><button onclick="deleteItem('emp', ${i})" class="text-red-600 font-bold">X</button></td></tr>`).join('');
+            document.getElementById('historyTableBody').innerHTML = logs.filter(l => l.staffNo.toUpperCase().includes(sLog) || l.toolId.toUpperCase().includes(sLog)).map((l, i) => {
+                let delay = "-"; let retDate = l.action === "RETURN" ? l.date : "-";
+                if(l.action === "ISSUE" && l.pendingQty > 0) { const diff = Math.abs(today - new Date(l.rawDate)); delay = Math.ceil(diff / 86400000) + " Days"; }
+                return `<tr><td>${l.date}</td><td>${retDate}</td><td>${l.category==='Consumable'?'CI':'-'}</td><td>${l.staffNo}</td><td>${l.toolId}</td><td class="${delay !== '-' ? 'delay-text' : ''}">${delay}</td><td>${l.action}</td><td class="${act}"><button onclick="deleteItem('log', ${i})" class="text-red-600 font-bold">X</button></td></tr>`;
+            }).join('');
+
+            // PAGE 3
+            document.getElementById('toolTableBody').innerHTML = inventory.filter(t => t.toolNo.toUpperCase().includes(sTool)).map((t, i) => {
+                let cs = ""; if(t.calibration){ const d = new Date(t.calibration); if(d <= today) cs = "calib-expired"; else if(d <= next7Days) cs = "calib-warning"; }
+                return `<tr><td><b>${t.toolNo}</b></td><td>${t.category}</td><td>${t.hyAaCode||'-'}</td><td><span class="${cs}">${t.calibration||'-'}</span></td><td class="font-bold text-emerald-600">${t.balance}</td><td class="${act}"><button onclick="editTool(${i})" class="text-blue-600 font-bold mr-2">ED</button><button onclick="deleteItem('tool', ${i})" class="text-red-600 font-bold">X</button></td></tr>`;
+            }).join('');
+
+            // PAGE 4
+            const lgr = {};
+            inventory.forEach((t, idx) => {
+                if (t.hyAaCode && t.hyAaCode.trim() !== "") {
+                    const c = t.hyAaCode.trim().toUpperCase();
+                    if (!lgr[c]) lgr[c] = { code: c, desc: t.desc, rec: 0, tools: [], mainIdx: idx };
+                    lgr[c].rec += Number(t.total); lgr[c].tools.push(t.toolNo);
+                }
+            });
+            document.getElementById('consumableTableBody').innerHTML = Object.values(lgr).filter(g => g.code.includes(sLedger)).map(g => {
+                const iss = logs.filter(l => g.tools.includes(l.toolId) && l.action === "ISSUE").reduce((s, c) => s + c.qty, 0);
+                return `<tr><td><b>${g.code}</b></td><td>${g.desc||'-'}</td><td class="bg-emerald-50">${g.rec}</td><td class="bg-orange-50">${iss}</td><td class="font-bold bg-indigo-50">${g.rec - iss}</td><td class="${act}"><button onclick="editTool(${g.mainIdx})" class="text-blue-600 font-bold mr-2">ED</button><button onclick="deleteItem('tool', ${g.mainIdx})" class="text-red-600 font-bold">X</button></td></tr>`;
+            }).join('');
+
+            // PAGE 5
+            const cal = inventory.filter(t => t.calibration && new Date(t.calibration) <= next7Days).filter(t => t.toolNo.toUpperCase().includes(sCalib));
+            document.getElementById('calibTableBody').innerHTML = cal.map(t => {
+                const log = logs.find(l => l.toolId === t.toolNo && l.pendingQty > 0);
+                const emp = log ? employees.find(e => e.staffNo === log.staffNo) : null;
+                return `<tr><td><b>${t.toolNo}</b></td><td>${t.calibration}</td><td>${new Date(t.calibration) <= today ? 'EXPIRED' : 'DUE'}</td><td>${log ? log.staffNo : '-'}</td><td>${emp ? emp.name : '-'}</td></tr>`;
+            }).join('');
+
+            // PAGE 6
+            document.getElementById('galleryContainer').innerHTML = logs.filter(l => l.photo && l.toolId.toUpperCase().includes(sGallery)).map((l, i) => {
+                const oIdx = logs.findIndex(ml => ml === l);
+                return `<div class="bg-slate-50 p-2 rounded border text-center flex flex-col justify-between"><div><img src="${l.photo}" class="w-full h-32 object-cover rounded mb-2 shadow-sm"><div class="text-[9px] font-black">${l.toolId}</div><div class="text-[8px] text-slate-500">${l.date} - ${l.action}</div><div class="text-[8px] font-bold mb-2">BY: ${l.staffNo}</div></div><button onclick="deleteItem('log', ${oIdx})" class="w-full py-1 bg-red-500 text-white rounded text-[8px] font-bold uppercase ${act}">Delete Entry</button></div>`;
+            }).join('');
+
+            const opts = inventory.map(t => `<option value="${t.toolNo}">${t.toolNo} - ${t.desc||''}</option>`).join('');
+            document.getElementById('txnToolNo').innerHTML = opts;
+            document.getElementById('qtTool').innerHTML = opts;
+            renderWaMessages();
+        }
+
+        document.getElementById('toolPic').onchange = e => {
+            const r = new FileReader();
+            r.onload = () => { currentImage = r.result; document.getElementById('preview').src = currentImage; document.getElementById('preview').classList.remove('hidden'); };
+            if(e.target.files[0]) r.readAsDataURL(e.target.files[0]);
+        };
+
+        function handleTransaction(type, staffId, toolId, qtyId, remarkId, dateId, photoData = null) {
+            const s = document.getElementById(staffId).value; const t = document.getElementById(toolId).value;
+            const q = parseInt(document.getElementById(qtyId).value); const rm = document.getElementById(remarkId).value;
+            const d = document.getElementById(dateId).value; const idx = inventory.findIndex(i => i.toolNo === t);
+            if (idx === -1 || !s) { alert("Fill all fields"); return false; }
+            if(type === 'issue') { if(inventory[idx].balance < q) { alert("No Stock"); return false; } inventory[idx].balance -= q; }
+            else { if(inventory[idx].category === 'Consumable') { alert("Consumable - No Return"); return false; } inventory[idx].balance += q; let rem = q; for(let l of logs) { if(l.staffNo === s && l.toolId === t && l.action === "ISSUE" && l.pendingQty > 0) { let take = Math.min(rem, l.pendingQty); l.pendingQty -= take; rem -= take; } } }
+            const dp = d.split('-');
+            logs.unshift({ date: `${dp[2]}-${dp[1]}-${dp[0]}`, rawDate: new Date(d).toISOString(), staffNo: s, toolId: t, qty: q, action: type.toUpperCase(), txnRemarks: rm, category: inventory[idx].category, pendingQty: (type==='issue' && inventory[idx].category!=='Consumable') ? q : 0, photo: photoData });
+            saveAndRefresh(); return true;
+        }
+
+        function saveQuickData() {
+            const type = document.querySelector('input[name="qtType"]:checked').value;
+            if(handleTransaction(type, 'qtStaff', 'qtTool', 'qtQty', 'qtRemark', 'qtDate', currentImage)) { 
+                alert("Photo Log Saved!"); document.getElementById('preview').classList.add('hidden'); 
+                document.getElementById('toolPic').value = ""; currentImage = null; 
+            }
+        }
+
+        function saveAndRefresh() { localStorage.setItem('cc_employees', JSON.stringify(employees)); localStorage.setItem('cc_inventory', JSON.stringify(inventory)); localStorage.setItem('cc_logs', JSON.stringify(logs)); render(); }
+        function deleteItem(type, index) { if(confirm("Delete this record?")) { if(type === 'emp') employees.splice(index, 1); else if(type === 'tool') inventory.splice(index, 1); else logs.splice(index, 1); saveAndRefresh(); } }
+        function editEmp(idx) { const e = employees[idx]; document.getElementById('empName').value = e.name; document.getElementById('staffNo').value = e.staffNo; document.getElementById('empPhone').value = e.phone; document.getElementById('empStatus').value = e.status; document.getElementById('editEmpIndex').value = idx; }
+        function editTool(idx) { const t = inventory[idx]; document.getElementById('toolNo').value = t.toolNo; document.getElementById('toolDesc').value = t.desc||''; document.getElementById('toolCat').value = t.category; document.getElementById('hyAaCode').value = t.hyAaCode||''; document.getElementById('calibDate').value = t.calibration||''; document.getElementById('totalQty').value = t.total; document.getElementById('editToolIndex').value = idx; switchPage(3); }
+        function switchPage(p) { document.querySelectorAll('[id^="page"]').forEach(el => el.classList.add('hidden')); document.querySelectorAll('[id^="tab"]').forEach(el => el.className = 'tab-btn px-4'); document.getElementById('page'+p).classList.remove('hidden'); document.getElementById('tab'+p).className = 'tab-btn tab-active px-4'; if(p===7) renderWaMessages(); }
+        function exportExcel(type) { const d = type==='emp'?employees:(type==='tool'?inventory:logs); const ws = XLSX.utils.json_to_sheet(d); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data"); XLSX.writeFile(wb, `BHEL_${type}.xlsx`); }
+        function exportCalibReport() { const tdy = new Date(); const n7 = new Date(); n7.setDate(tdy.getDate() + 7); const rep = inventory.filter(t => t.calibration && (new Date(t.calibration) <= n7)).map(t => { const log = logs.find(l => l.toolId === t.toolNo && l.pendingQty > 0); const emp = log ? employees.find(e => e.staffNo === log.staffNo) : null; return { "Tool No": t.toolNo, "Expiry": t.calibration, "Staff": log ? log.staffNo : "-", "Name": emp ? emp.name : "-" }; }); const ws = XLSX.utils.json_to_sheet(rep); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Report"); XLSX.writeFile(wb, `BHEL_Calib.xlsx`); }
+        function importExcel(ev, type) { const r = new FileReader(); r.onload = (e) => { const json = XLSX.utils.sheet_to_json(XLSX.read(e.target.result, {type:'binary'}).Sheets[XLSX.read(e.target.result, {type:'binary'}).SheetNames[0]]); if(type==='tool') inventory = [...inventory, ...json.map(t=>({...t, balance:t.balance??t.total}))]; else if(type==='emp') employees = [...employees, ...json]; else logs = [...logs, ...json]; saveAndRefresh(); }; r.readAsBinaryString(ev.target.files[0]); }
+    </script>
+</body>
+</html>
